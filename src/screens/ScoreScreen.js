@@ -14,6 +14,7 @@ import {
 import { ref, onValue, set } from 'firebase/database';
 import { db } from '../../firebase';
 import { useUserAuth } from '../context/UserAuthContext';
+import BackHeader from '../components/BackHeader';
 
 export default function ScoreScreen({ navigation }) {
   const { user, loading } = useUserAuth();
@@ -187,12 +188,10 @@ export default function ScoreScreen({ navigation }) {
   if (!user) {
     return (
       <View style={styles.center}>
-        <TouchableOpacity
+        <BackHeader
+          title="กลับหน้าแรก"
           onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-        >
-          <Text style={styles.backBtn}>← กลับหน้าแรก</Text>
-        </TouchableOpacity>
-
+        />
         <Text style={styles.emptyText}>กรุณาเข้าสู่ระบบก่อน</Text>
       </View>
     );
@@ -204,11 +203,10 @@ export default function ScoreScreen({ navigation }) {
       contentContainerStyle={{ paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
     >
-      <TouchableOpacity
+      <BackHeader
+        title="กลับหน้าแรก"
         onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-      >
-        <Text style={styles.backBtn}>← กลับหน้าแรก</Text>
-      </TouchableOpacity>
+      />
 
       <Text style={styles.header}>ระบบบันทึกคะแนนผลการเรียน</Text>
       <Text style={styles.subheader}>แสดงเฉพาะรายวิชาของครู: {user.email}</Text>
@@ -340,19 +338,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f6f8fb',
-    padding: 16,
+    paddingHorizontal: 16,
   },
   center: {
     flex: 1,
     backgroundColor: '#f6f8fb',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-  },
-  backBtn: {
-    color: '#ff6b00',
-    fontWeight: 'bold',
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   header: {
     fontSize: 26,

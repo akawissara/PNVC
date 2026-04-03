@@ -5,11 +5,11 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  TouchableOpacity,
 } from 'react-native';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import { useUserAuth } from '../context/UserAuthContext';
+import BackHeader from '../components/BackHeader';
 
 export default function StudyPlanScreen({ navigation }) {
   const { user, loading } = useUserAuth();
@@ -29,7 +29,6 @@ export default function StudyPlanScreen({ navigation }) {
           ...data[key],
         }));
 
-        // 🔥 filter เฉพาะของครูที่ login
         const myPlans = list.filter(
           (item) => item.teacherEmail === user?.email
         );
@@ -45,7 +44,6 @@ export default function StudyPlanScreen({ navigation }) {
     return () => unsubscribe();
   }, [user]);
 
-  // 🔄 Loading
   if (loading || pageLoading) {
     return (
       <View style={styles.center}>
@@ -55,16 +53,13 @@ export default function StudyPlanScreen({ navigation }) {
     );
   }
 
-  // ❌ ยังไม่ login
   if (!user) {
     return (
       <View style={styles.center}>
-        <TouchableOpacity
+        <BackHeader
+          title="กลับหน้าแรก"
           onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-        >
-          <Text style={styles.backBtn}>← กลับหน้าแรก</Text>
-        </TouchableOpacity>
-
+        />
         <Text style={styles.noData}>กรุณาเข้าสู่ระบบก่อน</Text>
       </View>
     );
@@ -84,11 +79,10 @@ export default function StudyPlanScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <BackHeader
+        title="กลับหน้าแรก"
         onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-      >
-        <Text style={styles.backBtn}>← กลับหน้าแรก</Text>
-      </TouchableOpacity>
+      />
 
       <Text style={styles.header}>แผนการเรียนของฉัน</Text>
 
@@ -109,7 +103,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f6f8fb',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   header: {
     fontSize: 26,
@@ -140,12 +135,10 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
+    backgroundColor: '#f6f8fb',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  backBtn: {
-    color: '#ff6b00',
-    fontWeight: 'bold',
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
 });

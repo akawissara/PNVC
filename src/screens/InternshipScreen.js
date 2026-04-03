@@ -1,14 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import BackHeader from '../components/BackHeader';
 
 export default function InternshipScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <BackHeader
+        title="กลับหน้าแรก"
         onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-      >
-        <Text style={styles.backBtn}>← กลับหน้าแรก</Text>
-      </TouchableOpacity>
+      />
 
       <Text style={styles.title}>ระบบติดตามการฝึกงาน</Text>
       <Text style={styles.subtitle}>ติดตามการฝึกงานในสถานประกอบการ</Text>
@@ -27,12 +27,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f6f8fb',
-    padding: 16,
-  },
-  backBtn: {
-    color: '#ff6b00',
-    fontWeight: 'bold',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   title: {
     fontSize: 26,

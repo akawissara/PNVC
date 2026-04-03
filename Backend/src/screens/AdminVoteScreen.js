@@ -18,6 +18,7 @@ import {
 } from 'firebase/database';
 import { db } from '../../../firebase';
 import { useUserAuth } from '../../../src/context/UserAuthContext';
+import BackHeader from '../../../src/components/BackHeader';
 
 export default function AdminVoteScreen({ navigation }) {
   const { isAdmin } = useUserAuth();
@@ -49,11 +50,10 @@ export default function AdminVoteScreen({ navigation }) {
   if (!isAdmin) {
     return (
       <View style={styles.center}>
-        <TouchableOpacity
+        <BackHeader
+          title="กลับหน้าแรก"
           onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-        >
-          <Text style={styles.backBtn}>← กลับหน้าแรก</Text>
-        </TouchableOpacity>
+        />
         <Text style={styles.noAccess}>คุณไม่มีสิทธิ์เข้าใช้งานหน้านี้</Text>
       </View>
     );
@@ -167,11 +167,10 @@ export default function AdminVoteScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <BackHeader
+        title="กลับหน้าแรก"
         onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-      >
-        <Text style={styles.backBtn}>← กลับหน้าแรก</Text>
-      </TouchableOpacity>
+      />
 
       <Text style={styles.header}>Admin จัดการโหวต</Text>
 
@@ -218,9 +217,8 @@ export default function AdminVoteScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f6f8fb', padding: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  backBtn: { color: '#ff6b00', fontWeight: 'bold', marginBottom: 10 },
+  container: { flex: 1, backgroundColor: '#f6f8fb', paddingHorizontal: 16, paddingBottom: 16 },
+  center: { flex: 1, backgroundColor: '#f6f8fb', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 },
   noAccess: { fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
   header: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   formCard: {

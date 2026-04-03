@@ -15,6 +15,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { db } from '../../firebase';
 import { useUserAuth } from '../context/UserAuthContext';
+import BackHeader from '../components/BackHeader';
 
 export default function ScoreDetailScreen({ route, navigation }) {
   const { plan } = route.params;
@@ -366,61 +367,68 @@ export default function ScoreDetailScreen({ route, navigation }) {
   }
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.backBtn}>← กลับหน้าก่อนหน้า</Text>
-      </TouchableOpacity>
+    <View style={styles.screen}>
+      <BackHeader
+        title="กลับหน้าก่อนหน้า"
+        onPress={() => navigation.goBack()}
+      />
 
-      <Text style={styles.header}>ผลการเรียนรายวิชา</Text>
-      <Text style={styles.subjectCode}>
-        {plan.subjectCode} - {plan.subjectName}
-      </Text>
+      <View style={styles.container}>
+        <Text style={styles.header}>ผลการเรียนรายวิชา</Text>
+        <Text style={styles.subjectCode}>
+          {plan.subjectCode} - {plan.subjectName}
+        </Text>
 
-      <View style={styles.topActionRow}>
-        <TouchableOpacity style={styles.pdfBtn} onPress={handleExportPdf}>
-          <Text style={styles.pdfBtnText}>ส่งออก PDF</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>ครูผู้สอน: {plan.teacherName}</Text>
-        <Text style={styles.infoText}>เวลาเรียน: {plan.studyTime}</Text>
-        <Text style={styles.infoText}>จำนวนผู้เรียน: {scores.length} คน</Text>
-        <Text style={styles.infoText}>เกรดเฉลี่ยรายวิชา: {getAverageGrade()}</Text>
-      </View>
-
-      <View style={styles.tableCard}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.th, styles.colNo]}>ลำดับ</Text>
-          <Text style={[styles.th, styles.colStudentId]}>รหัสนักเรียน</Text>
-          <Text style={[styles.th, styles.colName]}>ชื่อ-สกุล</Text>
-          <Text style={[styles.th, styles.colTotal]}>รวม</Text>
-          <Text style={[styles.th, styles.colGrade]}>ผลการเรียน</Text>
+        <View style={styles.topActionRow}>
+          <TouchableOpacity style={styles.pdfBtn} onPress={handleExportPdf}>
+            <Text style={styles.pdfBtnText}>ส่งออก PDF</Text>
+          </TouchableOpacity>
         </View>
 
-        {scores.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>ยังไม่มีข้อมูลผลการเรียน</Text>
+        <View style={styles.infoCard}>
+          <Text style={styles.infoText}>ครูผู้สอน: {plan.teacherName}</Text>
+          <Text style={styles.infoText}>เวลาเรียน: {plan.studyTime}</Text>
+          <Text style={styles.infoText}>จำนวนผู้เรียน: {scores.length} คน</Text>
+          <Text style={styles.infoText}>เกรดเฉลี่ยรายวิชา: {getAverageGrade()}</Text>
+        </View>
+
+        <View style={styles.tableCard}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.th, styles.colNo]}>ลำดับ</Text>
+            <Text style={[styles.th, styles.colStudentId]}>รหัสนักเรียน</Text>
+            <Text style={[styles.th, styles.colName]}>ชื่อ-สกุล</Text>
+            <Text style={[styles.th, styles.colTotal]}>รวม</Text>
+            <Text style={[styles.th, styles.colGrade]}>ผลการเรียน</Text>
           </View>
-        ) : (
-          <FlatList
-            data={scores}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            contentContainerStyle={{ paddingBottom: 12 }}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
+
+          {scores.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>ยังไม่มีข้อมูลผลการเรียน</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={scores}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              contentContainerStyle={{ paddingBottom: 12 }}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: '#f6f8fb',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  container: {
+    flex: 1,
   },
   center: {
     flex: 1,
@@ -431,12 +439,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     color: '#555',
-  },
-  backBtn: {
-    color: '#ff6b00',
-    fontWeight: 'bold',
-    marginBottom: 10,
-    fontSize: 15,
   },
   header: {
     fontSize: 28,

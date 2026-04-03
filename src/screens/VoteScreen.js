@@ -11,6 +11,7 @@ import {
 import { ref, onValue, runTransaction, set, get } from 'firebase/database';
 import { db } from '../../firebase';
 import { useUserAuth } from '../context/UserAuthContext';
+import BackHeader from '../components/BackHeader';
 
 export default function VoteScreen({ navigation }) {
   const { user, loading } = useUserAuth();
@@ -136,11 +137,10 @@ export default function VoteScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <BackHeader
+        title="กลับหน้าแรก"
         onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-      >
-        <Text style={styles.backBtn}>← กลับหน้าแรก</Text>
-      </TouchableOpacity>
+      />
 
       <Text style={styles.header}>ระบบโหวต</Text>
 
@@ -161,18 +161,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f6f8fb',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   center: {
     flex: 1,
     backgroundColor: '#f6f8fb',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  backBtn: {
-    color: '#ff6b00',
-    fontWeight: 'bold',
-    marginBottom: 10,
   },
   header: {
     fontSize: 28,
