@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -20,14 +21,10 @@ export default function CameraViewScreen({ onPhotoSaved, onOpenGallery }) {
 
   useEffect(() => {
     (async () => {
-      if (!permission?.granted) {
-        await requestPermission();
-      }
-
       const last = await getLastPhoto();
       if (last) setThumb(last);
     })();
-  }, [permission]);
+  }, []);
 
   if (!permission) return <View style={{ flex: 1, backgroundColor: '#000' }} />;
 
@@ -53,16 +50,23 @@ export default function CameraViewScreen({ onPhotoSaved, onOpenGallery }) {
       if (!camRef.current || !ready) return;
 
       const shot = await camRef.current.takePictureAsync();
-      const filename = `photo_${Date.now()}.jpg`;
-      const dest = FileSystem.documentDirectory + filename;
 
-      await FileSystem.copyAsync({ from: shot.uri, to: dest });
-
-      await addPhoto(dest);
-      setThumb(dest);
-      onPhotoSaved?.(dest);
-
-      Alert.alert('สำเร็จ', 'บันทึกรูปไว้ในเครื่องแล้ว');
+      if (Platform.OS === 'web') {
+        // บน Web ใช้ URI จาก shot ได้เลย (เป็น blob URL)
+        await addPhoto(shot.uri);
+        setThumb(shot.uri);
+        onPhotoSaved?.(shot.uri);
+        Alert.alert('สำเร็จ', 'บันทึกรูปแล้ว');
+      } else {
+        // บนมือถือ ค่อย copy ไฟล์
+        const filename = `photo_${Date.now()}.jpg`;
+        const dest = FileSystem.documentDirectory + filename;
+        await FileSystem.copyAsync({ from: shot.uri, to: dest });
+        await addPhoto(dest);
+        setThumb(dest);
+        onPhotoSaved?.(dest);
+        Alert.alert('สำเร็จ', 'บันทึกรูปไว้ในเครื่องแล้ว');
+      }
     } catch (e) {
       console.log(e);
       Alert.alert('ผิดพลาด', 'ถ่ายหรือบันทึกรูปไม่สำเร็จ');
