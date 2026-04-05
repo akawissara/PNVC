@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {
   ref,
   push,
   set,
+  get,
   onValue,
   update,
   remove,
@@ -21,16 +23,18 @@ import { useUserAuth } from '../../../src/context/UserAuthContext';
 import BackHeader from '../../../src/components/BackHeader';
 
 export default function AdminVoteScreen({ navigation }) {
-  const { isAdmin } = useUserAuth();
+  const { isAdmin, loading } = useUserAuth();
 
-  const [title, setTitle] = useState('');
+  const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
   const [votes, setVotes] = useState([]);
+  const [voteRecords, setVoteRecords] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
+  // ดึงข้อมูลตาราง votes (รายการโหวต)
   useEffect(() => {
     const votesRef = ref(db, 'votes');
-
     const unsubscribe = onValue(votesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -42,8 +46,26 @@ export default function AdminVoteScreen({ navigation }) {
       } else {
         setVotes([]);
       }
+      setPageLoading(false);
     });
+    return () => unsubscribe();
+  }, []);
 
+  // ดึงข้อมูลตาราง voteRecords (บันทึกการโหวต)
+  useEffect(() => {
+    const recordsRef = ref(db, 'voteRecords');
+    const unsubscribe = onValue(recordsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const recordList = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setVoteRecords(recordList);
+      } else {
+        setVoteRecords([]);
+      }
+    });
     return () => unsubscribe();
   }, []);
 
@@ -60,43 +82,62 @@ export default function AdminVoteScreen({ navigation }) {
   }
 
   const resetForm = () => {
-    setTitle('');
+    setProjectName('');
     setDescription('');
     setEditingId(null);
   };
 
+  // ===== Admin สร้าง/แก้ไขหัวข้อโหวต (ตาราง votes) =====
   const handleSaveVote = async () => {
-    if (!title.trim()) {
-      Alert.alert('แจ้งเตือน', 'กรุณากรอกหัวข้อโหวต');
+    if (!projectName.trim()) {
+      Alert.alert('แจ้งเตือน', 'กรุณากรอกชื่อโครงการ');
       return;
     }
 
     try {
       if (editingId) {
+        // แก้ไขหัวข้อโหวต
         await update(ref(db, `votes/${editingId}`), {
-          title: title.trim(),
+          projectName: projectName.trim(),
           description: description.trim(),
+          updatedAt: new Date().toLocaleString('th-TH', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
         });
-
         Alert.alert('สำเร็จ', 'แก้ไขหัวข้อโหวตแล้ว');
       } else {
-        const newVoteRef = push(ref(db, 'votes'));
+        // สร้างหัวข้อโหวตใหม่ โดยใช้ ID เป็นตัวเลข 1, 2, 3, ...
+        const snapshot = await get(ref(db, 'votes'));
+        let nextId = 1;
 
-        await set(newVoteRef, {
-          title: title.trim(),
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const existingIds = Object.keys(data).map((k) => parseInt(k)).filter((n) => !isNaN(n));
+          if (existingIds.length > 0) {
+            nextId = Math.max(...existingIds) + 1;
+          }
+        }
+
+        const newVoteId = String(nextId);
+
+        await set(ref(db, `votes/${newVoteId}`), {
+          voteId: newVoteId,                 // Primary Key เป็นตัวเลข "1", "2", "3"
+          projectName: projectName.trim(),
           description: description.trim(),
-          options: ['เข้าร่วม', 'ไม่เข้าร่วม'],
-          optionVotes: {
-            เข้าร่วม: 0,
-            ไม่เข้าร่วม: 0,
-          },
-          userVotes: {},
-          createdAt: Date.now(),
+          createdAt: new Date().toLocaleString('th-TH', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
         });
-
-        Alert.alert('สำเร็จ', 'เพิ่มหัวข้อโหวตแล้ว');
+        Alert.alert('สำเร็จ', `เพิ่มหัวข้อโหวตแล้ว (ID: ${newVoteId})`);
       }
-
       resetForm();
     } catch (error) {
       console.log('save vote error:', error);
@@ -105,7 +146,7 @@ export default function AdminVoteScreen({ navigation }) {
   };
 
   const handleEdit = (item) => {
-    setTitle(item.title || '');
+    setProjectName(item.projectName || '');
     setDescription(item.description || '');
     setEditingId(item.id);
   };
@@ -113,7 +154,7 @@ export default function AdminVoteScreen({ navigation }) {
   const handleDelete = (id) => {
     Alert.alert(
       'ยืนยันการลบ',
-      'คุณต้องการลบหัวข้อโหวตนี้ใช่หรือไม่',
+      'คุณต้องการลบหัวข้อโหวตนี้ใช่หรือไม่\n(บันทึกการโหวตของหัวข้อนี้จะถูกลบด้วย)',
       [
         { text: 'ยกเลิก', style: 'cancel' },
         {
@@ -121,7 +162,17 @@ export default function AdminVoteScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
+              // ลบหัวข้อโหวต
               await remove(ref(db, `votes/${id}`));
+
+              // ลบ voteRecords ที่เกี่ยวข้อง
+              const relatedRecords = voteRecords.filter(
+                (r) => r.voteId === id
+              );
+              for (const record of relatedRecords) {
+                await remove(ref(db, `voteRecords/${record.id}`));
+              }
+
               Alert.alert('สำเร็จ', 'ลบหัวข้อโหวตแล้ว');
             } catch (error) {
               console.log('delete vote error:', error);
@@ -133,18 +184,40 @@ export default function AdminVoteScreen({ navigation }) {
     );
   };
 
+  // นับจำนวนคนโหวตของแต่ละโครงการ
+  const getVoteCount = (voteId) => {
+    return voteRecords.filter((r) => r.voteId === voteId).length;
+  };
+
   const renderItem = ({ item }) => {
-    const joinCount = item.optionVotes?.['เข้าร่วม'] || 0;
+    const count = getVoteCount(item.id);
+
+    // ดึงรายชื่อคนที่โหวตโครงการนี้
+    const voters = voteRecords.filter((r) => r.voteId === item.id);
 
     return (
       <View style={styles.voteCard}>
-        <Text style={styles.voteTitle}>{item.title}</Text>
+        <Text style={styles.voteTitle}>{item.projectName}</Text>
 
         {!!item.description && (
           <Text style={styles.voteDesc}>{item.description}</Text>
         )}
 
-        <Text style={styles.countLabel}>จำนวนผู้เข้าร่วม: {joinCount} คน</Text>
+        <Text style={styles.countLabel}>
+          จำนวนผู้โหวต: {count} คน
+        </Text>
+
+        {/* แสดงรายชื่อผู้โหวต */}
+        {voters.length > 0 && (
+          <View style={styles.voterList}>
+            <Text style={styles.voterHeader}>รายชื่อผู้โหวต:</Text>
+            {voters.map((v, index) => (
+              <Text key={v.id} style={styles.voterText}>
+                {index + 1}. {v.voterName} ({v.voterEmail}) - {new Date(v.votedAt).toLocaleString('th-TH')}
+              </Text>
+            ))}
+          </View>
+        )}
 
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -165,6 +238,15 @@ export default function AdminVoteScreen({ navigation }) {
     );
   };
 
+  if (loading || pageLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#ff6b00" />
+        <Text style={{ marginTop: 10 }}>กำลังโหลด...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <BackHeader
@@ -176,9 +258,9 @@ export default function AdminVoteScreen({ navigation }) {
 
       <View style={styles.formCard}>
         <TextInput
-          placeholder="หัวข้อโหวต"
-          value={title}
-          onChangeText={setTitle}
+          placeholder="ชื่อโครงการ"
+          value={projectName}
+          onChangeText={setProjectName}
           style={styles.input}
         />
 
@@ -192,7 +274,7 @@ export default function AdminVoteScreen({ navigation }) {
 
         <TouchableOpacity style={styles.addBtn} onPress={handleSaveVote}>
           <Text style={styles.addBtnText}>
-            {editingId ? 'บันทึกการแก้ไข' : 'เพิ่มหัวข้อ'}
+            {editingId ? 'บันทึกการแก้ไข' : 'เพิ่มหัวข้อโหวต'}
           </Text>
         </TouchableOpacity>
 
@@ -226,14 +308,16 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     marginBottom: 14,
+    elevation: 2,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
-    padding: 10,
+    padding: 12,
     marginBottom: 10,
-    borderRadius: 10,
-    backgroundColor: '#fff',
+    borderRadius: 12,
+    backgroundColor: '#f9fafc',
+    fontSize: 15,
   },
   textArea: {
     minHeight: 80,
@@ -241,19 +325,20 @@ const styles = StyleSheet.create({
   },
   addBtn: {
     backgroundColor: '#ff6b00',
-    padding: 12,
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 8,
   },
   addBtnText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   cancelBtn: {
     backgroundColor: '#eee',
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
   },
   cancelBtnText: {
@@ -262,33 +347,54 @@ const styles = StyleSheet.create({
   },
   voteCard: {
     backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 14,
+    padding: 16,
+    borderRadius: 16,
     marginBottom: 12,
+    elevation: 2,
   },
   voteTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 6,
+    color: '#111',
   },
   voteDesc: {
     fontSize: 14,
     color: '#666',
     marginBottom: 10,
+    lineHeight: 20,
   },
   countLabel: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#ff6b00',
     fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  voterList: {
+    backgroundColor: '#f9fafc',
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 12,
+  },
+  voterHeader: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 6,
+  },
+  voterText: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 4,
+    lineHeight: 20,
   },
   actionRow: {
     flexDirection: 'row',
   },
   actionBtn: {
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingHorizontal: 18,
+    borderRadius: 12,
     marginRight: 10,
   },
   editBtn: {
