@@ -173,6 +173,9 @@ export default function AdminVoteScreen({ navigation }) {
                 await remove(ref(db, `voteRecords/${record.id}`));
               }
 
+              // ลบ voteSummary ที่เกี่ยวข้อง
+              await remove(ref(db, `voteSummary/${id}`));
+
               Alert.alert('สำเร็จ', 'ลบหัวข้อโหวตแล้ว');
             } catch (error) {
               console.log('delete vote error:', error);
@@ -184,13 +187,16 @@ export default function AdminVoteScreen({ navigation }) {
     );
   };
 
-  // นับจำนวนคนโหวตของแต่ละโครงการ
-  const getVoteCount = (voteId) => {
-    return voteRecords.filter((r) => r.voteId === voteId).length;
+  // นับจำนวนคนโหวตแยกตามตัวเลือก
+  const getVoteCounts = (voteId) => {
+    const records = voteRecords.filter((r) => r.voteId === voteId);
+    const joinCount = records.filter((r) => r.selectedOption === 'เข้าร่วม').length;
+    const rejectCount = records.filter((r) => r.selectedOption === 'ไม่เข้าร่วม').length;
+    return { total: records.length, joinCount, rejectCount };
   };
 
   const renderItem = ({ item }) => {
-    const count = getVoteCount(item.id);
+    const { total, joinCount, rejectCount } = getVoteCounts(item.id);
 
     // ดึงรายชื่อคนที่โหวตโครงการนี้
     const voters = voteRecords.filter((r) => r.voteId === item.id);
@@ -204,7 +210,13 @@ export default function AdminVoteScreen({ navigation }) {
         )}
 
         <Text style={styles.countLabel}>
-          จำนวนผู้โหวต: {count} คน
+          จำนวนผู้โหวตทั้งหมด: {total} คน
+        </Text>
+        <Text style={styles.joinCount}>
+          เข้าร่วม: {joinCount} คน
+        </Text>
+        <Text style={styles.rejectCount}>
+          ไม่เข้าร่วม: {rejectCount} คน
         </Text>
 
         {/* แสดงรายชื่อผู้โหวต */}
@@ -213,7 +225,7 @@ export default function AdminVoteScreen({ navigation }) {
             <Text style={styles.voterHeader}>รายชื่อผู้โหวต:</Text>
             {voters.map((v, index) => (
               <Text key={v.id} style={styles.voterText}>
-                {index + 1}. {v.voterName} ({v.voterEmail}) - {new Date(v.votedAt).toLocaleString('th-TH')}
+                {index + 1}. {v.voterName} ({v.voterEmail}) - {v.selectedOption === 'เข้าร่วม' ? '✅ เข้าร่วม' : '❌ ไม่เข้าร่วม'} - {v.votedAt}
               </Text>
             ))}
           </View>
@@ -368,7 +380,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ff6b00',
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  joinCount: {
+    fontSize: 15,
+    color: '#2E7D32',
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  rejectCount: {
+    fontSize: 15,
+    color: '#D32F2F',
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   voterList: {
     backgroundColor: '#f9fafc',

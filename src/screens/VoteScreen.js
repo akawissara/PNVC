@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { ref, onValue, push, set, get } from 'firebase/database';
+import { ref, onValue, push, set, get, runTransaction } from 'firebase/database';
 import { db } from '../../firebase';
 import { useUserAuth } from '../context/UserAuthContext';
 import BackHeader from '../components/BackHeader';
@@ -107,6 +107,28 @@ export default function VoteScreen({ navigation }) {
         }),                                  // เช่น "5 เมษายน 2026 14:30"
       });
 
+      // อัปเดตตาราง voteSummary ใน Firebase
+      const summaryRef = ref(db, `voteSummary/${voteItem.id}`);
+      const summarySnap = await get(summaryRef);
+
+      if (summarySnap.exists()) {
+        // มีอยู่แล้ว → อัปเดตจำนวน
+        const current = summarySnap.val();
+        await set(summaryRef, {
+          ...current,
+          joinCount: (current.joinCount || 0) + (selectedOption === 'เข้าร่วม' ? 1 : 0),
+          rejectCount: (current.rejectCount || 0) + (selectedOption === 'ไม่เข้าร่วม' ? 1 : 0),
+        });
+      } else {
+        // ยังไม่มี → สร้างใหม่
+        await set(summaryRef, {
+          voteId: voteItem.id,
+          projectName: voteItem.projectName,
+          joinCount: selectedOption === 'เข้าร่วม' ? 1 : 0,
+          rejectCount: selectedOption === 'ไม่เข้าร่วม' ? 1 : 0,
+        });
+      }
+
       Alert.alert('สำเร็จ', `คุณเลือก "${selectedOption}" โครงการ "${voteItem.projectName}" เรียบร้อยแล้ว`);
     } catch (error) {
       console.log('vote error:', error);
@@ -114,9 +136,12 @@ export default function VoteScreen({ navigation }) {
     }
   };
 
-  // นับจำนวนคนโหวตของแต่ละโครงการ
-  const getVoteCount = (voteId) => {
-    return voteRecords.filter((r) => r.voteId === voteId).length;
+  // นับจำนวนคนโหวตแยกตามตัวเลือก
+  const getVoteCounts = (voteId) => {
+    const records = voteRecords.filter((r) => r.voteId === voteId);
+    const joinCount = records.filter((r) => r.selectedOption === 'เข้าร่วม').length;
+    const rejectCount = records.filter((r) => r.selectedOption === 'ไม่เข้าร่วม').length;
+    return { total: records.length, joinCount, rejectCount };
   };
 
   // เช็คว่า user คนนี้โหวตโครงการนี้แล้วหรือยัง
@@ -138,7 +163,6 @@ export default function VoteScreen({ navigation }) {
 
   const renderVoteCard = ({ item }) => {
     const voted = hasUserVoted(item.id);
-    const count = getVoteCount(item.id);
     const myOption = getUserVoteOption(item.id);
 
     return (
@@ -148,10 +172,6 @@ export default function VoteScreen({ navigation }) {
         {!!item.description && (
           <Text style={styles.cardDesc}>{item.description}</Text>
         )}
-
-        <Text style={styles.countText}>
-          จำนวนผู้โหวต: {count} คน
-        </Text>
 
         <Text style={styles.statusText}>
           สถานะ: {voted ? `โหวตแล้ว (${myOption}) ✓` : 'ยังไม่ได้โหวต'}
@@ -278,7 +298,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#ff6b00',
     fontWeight: 'bold',
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  joinCount: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  rejectCount: {
+    fontSize: 14,
+    color: '#D32F2F',
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
   statusText: {
     fontSize: 14,
